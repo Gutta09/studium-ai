@@ -1,7 +1,8 @@
 @import "tailwindcss";
 
+@variant dark (&:is(.dark *));
+
 body {
   margin: 0;
-  background: #f8fafc;
   font-family: system-ui, -apple-system, sans-serif;
 }

@@ -48,9 +48,10 @@ export interface QuizResult {
 
 // ── API functions ─────────────────────────────────────────────────────────────
 
-export async function uploadSyllabus(file: File): Promise<UploadResult> {
+export async function uploadSyllabus(file: File, days: number): Promise<UploadResult> {
   const form = new FormData();
   form.append("file", file);
+  form.append("days", String(days));
 
   const { data } = await axios.post<UploadResult>(
     `${API}/api/upload-syllabus`,
@@ -117,5 +118,27 @@ export async function replan(syllabusId: string): Promise<ReplanResult> {
   const { data } = await axios.post<ReplanResult>(`${API}/api/replan`, {
     syllabus_id: syllabusId,
   });
+  return data;
+}
+
+// ── Important Questions types ─────────────────────────────────────────────────
+
+export interface ExamQuestion {
+  question: string;
+  answer: string;
+}
+
+export interface ImportantQuestionsResult {
+  topic: string;
+  "2_mark": ExamQuestion[];
+  "5_mark": ExamQuestion[];
+  "10_mark": ExamQuestion[];
+}
+
+export async function fetchImportantQuestions(topic: string): Promise<ImportantQuestionsResult> {
+  const { data } = await axios.post<ImportantQuestionsResult>(
+    `${API}/api/important-questions`,
+    { topic }
+  );
   return data;
 }
