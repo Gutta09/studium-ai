@@ -28,10 +28,7 @@ def extract_topics(syllabus_text: str) -> list[str]:
             },
             {
                 "role": "user",
-                "content": (
-                    "Extract all study topics from this syllabus in order.\n\n"
-                    f"Syllabus:\n{trimmed}"
-                ),
+                "content": f"Extract all study topics from this syllabus in order.\n\nSyllabus:\n{trimmed}",
             },
         ],
     )
@@ -40,8 +37,20 @@ def extract_topics(syllabus_text: str) -> list[str]:
     return data["topics"]
 
 
-def generate_study_plan(topics: list[str]) -> list[dict]:
-    start_date = (date.today() + timedelta(days=1)).isoformat()
+def _business_end_date(start: date, n_days: int) -> date:
+    """Return the date that is n_days business days (Mon–Fri) from start."""
+    d = start
+    added = 0
+    while added < n_days:
+        d += timedelta(days=1)
+        if d.weekday() < 5:
+            added += 1
+    return d
+
+
+def generate_study_plan(topics: list[str], total_days: int = 30) -> list[dict]:
+    start = date.today() + timedelta(days=1)
+    end = _business_end_date(start, total_days)
 
     response = client.chat.completions.create(
         model=MODEL,
@@ -58,13 +67,15 @@ def generate_study_plan(topics: list[str]) -> list[dict]:
             {
                 "role": "user",
                 "content": (
-                    f"Create a study plan starting from {start_date} for these topics:\n"
+                    f"Create a study plan for these {len(topics)} topics:\n"
                     f"{json.dumps(topics)}\n\n"
-                    "Rules:\n"
-                    "- 1 day for simple topics, 2 days for complex ones\n"
-                    "- Skip weekends (Sat/Sun)\n"
-                    "- Each description should say what to study that day\n"
-                    "- status is always 'pending'"
+                    f"Constraints:\n"
+                    f"- Start date: {start.isoformat()}\n"
+                    f"- Must finish by: {end.isoformat()} ({total_days} study days)\n"
+                    f"- Skip weekends (Sat/Sun)\n"
+                    f"- Distribute all topics within this window — complex topics get more days\n"
+                    f"- Each session description should say what to study that day\n"
+                    f"- status is always 'pending'"
                 ),
             },
         ],
