@@ -17,12 +17,12 @@ function formatDate(iso: string) {
 }
 
 const TOPIC_COLORS = [
-  "bg-indigo-100 text-indigo-700",
-  "bg-sky-100 text-sky-700",
-  "bg-emerald-100 text-emerald-700",
-  "bg-amber-100 text-amber-700",
-  "bg-rose-100 text-rose-700",
-  "bg-violet-100 text-violet-700",
+  "bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300",
+  "bg-sky-100 dark:bg-sky-900/50 text-sky-700 dark:text-sky-300",
+  "bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300",
+  "bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300",
+  "bg-rose-100 dark:bg-rose-900/50 text-rose-700 dark:text-rose-300",
+  "bg-violet-100 dark:bg-violet-900/50 text-violet-700 dark:text-violet-300",
 ];
 
 export default function StudyPlan({ result, onReset, onQuiz, onImportantQuestions, onSessionsUpdated }: Props) {
@@ -37,12 +37,12 @@ export default function StudyPlan({ result, onReset, onQuiz, onImportantQuestion
       {/* Page header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Study Plan</h1>
-          <p className="text-sm text-slate-500 mt-0.5">Your personalised learning schedule</p>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Study Plan</h1>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">Your personalised learning schedule</p>
         </div>
         <button
           onClick={onReset}
-          className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-indigo-600 border border-slate-200 rounded-lg px-4 py-2 hover:border-indigo-300 transition-colors"
+          className="flex items-center gap-1.5 text-sm text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:text-indigo-400 border border-slate-200 dark:border-slate-700 rounded-lg px-4 py-2 hover:border-indigo-300 transition-colors"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
@@ -56,10 +56,10 @@ export default function StudyPlan({ result, onReset, onQuiz, onImportantQuestion
         {[
           { label: "Total Topics", value: topics.length, color: "text-indigo-600" },
           { label: "Study Sessions", value: sessions.length, color: "text-sky-600" },
-          { label: "Start Date", value: startDate, color: "text-emerald-600" },
+          { label: "Start Date", value: startDate, color: "text-emerald-600 dark:text-emerald-400" },
           { label: "End Date", value: endDate, color: "text-amber-600" },
         ].map(({ label, value, color }) => (
-          <div key={label} className="bg-white rounded-xl border border-slate-200 px-5 py-4">
+          <div key={label} className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 px-5 py-4">
             <p className="text-xs font-medium text-slate-400 uppercase tracking-wider mb-1">{label}</p>
             <p className={`text-xl font-bold ${color}`}>{value}</p>
           </div>
@@ -67,8 +67,8 @@ export default function StudyPlan({ result, onReset, onQuiz, onImportantQuestion
       </div>
 
       {/* Topics */}
-      <div className="bg-white rounded-2xl border border-slate-200 p-6">
-        <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-4">
+      <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-6">
+        <h2 className="text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-4">
           Extracted Topics
         </h2>
         <div className="flex flex-wrap gap-2">
@@ -87,28 +87,28 @@ export default function StudyPlan({ result, onReset, onQuiz, onImportantQuestion
       <ProgressPanel syllabusId={syllabus_id} onSessionsUpdated={onSessionsUpdated} />
 
       {/* Schedule table */}
-      <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
-        <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wider">
+      <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+        <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-700/60 flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
             Day-wise Schedule
           </h2>
           <span className="text-xs text-slate-400">{sessions.length} sessions</span>
         </div>
 
         {/* Table header */}
-        <div className="grid grid-cols-[80px_1fr_1fr_140px] gap-4 px-6 py-2 bg-slate-50 border-b border-slate-100 text-xs font-semibold text-slate-400 uppercase tracking-wider">
+        <div className="grid grid-cols-[80px_1fr_1fr_140px] gap-4 px-6 py-2 bg-slate-50 dark:bg-slate-900/50 border-b border-slate-100 dark:border-slate-700/60 text-xs font-semibold text-slate-400 uppercase tracking-wider">
           <span>Date</span>
           <span>Topic</span>
           <span>What to Study</span>
           <span className="text-right">Actions</span>
         </div>
 
-        <div className="divide-y divide-slate-100">
+        <div className="divide-y divide-slate-100 dark:divide-slate-700/60">
           {sessions.map((session, i) => (
             <div
               key={i}
               className={`grid grid-cols-[80px_1fr_1fr_140px] gap-4 items-center px-6 py-3.5 transition-colors ${
-                session.is_review ? "bg-amber-50/60" : "hover:bg-slate-50/80"
+                session.is_review ? "bg-amber-50/60 dark:bg-amber-900/20" : "hover:bg-slate-50/80 dark:hover:bg-slate-700/40"
               }`}
             >
               {/* Date */}
@@ -118,18 +118,18 @@ export default function StudyPlan({ result, onReset, onQuiz, onImportantQuestion
 
               {/* Topic */}
               <div>
-                <p className="text-sm font-medium text-slate-800">
+                <p className="text-sm font-medium text-slate-800 dark:text-slate-100">
                   {session.topic}
                 </p>
                 {session.is_review && (
-                  <span className="text-xs bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded font-medium">
+                  <span className="text-xs bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300 px-1.5 py-0.5 rounded font-medium">
                     Review
                   </span>
                 )}
               </div>
 
               {/* Description */}
-              <p className="text-xs text-slate-500 leading-relaxed">
+              <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
                 {session.description}
               </p>
 
@@ -137,7 +137,7 @@ export default function StudyPlan({ result, onReset, onQuiz, onImportantQuestion
               <div className="flex items-center gap-1.5 justify-end">
                 <button
                   onClick={() => onImportantQuestions(session.topic)}
-                  className="text-xs px-2.5 py-1 rounded-lg border border-amber-200 text-amber-700 hover:bg-amber-50 font-medium transition-colors"
+                  className="text-xs px-2.5 py-1 rounded-lg border border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-300 hover:bg-amber-50 dark:bg-amber-950/40 font-medium transition-colors"
                 >
                   Imp. Qs
                 </button>

@@ -68,7 +68,7 @@ export default function QuizPage({ syllabusId, topic, onBack }: Props) {
     return (
       <div className="max-w-2xl mx-auto text-center py-24">
         <p className="text-violet-600 text-lg font-medium animate-pulse">
-          Claude is writing your quiz…
+          Writing your quiz…
         </p>
         <p className="text-slate-400 text-sm mt-2">Topic: {topic}</p>
       </div>
@@ -95,8 +95,8 @@ export default function QuizPage({ syllabusId, topic, onBack }: Props) {
         <div
           className={`rounded-2xl p-6 text-center ${
             passed
-              ? "bg-emerald-50 border border-emerald-200"
-              : "bg-amber-50 border border-amber-200"
+              ? "bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800"
+              : "bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800"
           }`}
         >
           <p className="text-5xl font-bold mb-1">
@@ -104,12 +104,12 @@ export default function QuizPage({ syllabusId, topic, onBack }: Props) {
           </p>
           <p
             className={`text-lg font-medium ${
-              passed ? "text-emerald-700" : "text-amber-700"
+              passed ? "text-emerald-700 dark:text-emerald-300" : "text-amber-700 dark:text-amber-300"
             }`}
           >
             {result.percentage}% — {passed ? "Great job! 🎉" : "Keep studying! 📚"}
           </p>
-          <p className="text-slate-500 text-sm mt-1">{topic}</p>
+          <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">{topic}</p>
         </div>
 
         {/* Breakdown */}
@@ -117,8 +117,8 @@ export default function QuizPage({ syllabusId, topic, onBack }: Props) {
           {result.breakdown.map((item, i) => (
             <div
               key={i}
-              className={`bg-white rounded-xl border p-5 ${
-                item.is_correct ? "border-emerald-200" : "border-red-200"
+              className={`bg-white dark:bg-slate-800 rounded-xl border p-5 ${
+                item.is_correct ? "border-emerald-200 dark:border-emerald-800" : "border-red-200 dark:border-red-800"
               }`}
             >
               <div className="flex items-start gap-3 mb-3">
@@ -129,7 +129,7 @@ export default function QuizPage({ syllabusId, topic, onBack }: Props) {
                 >
                   {item.is_correct ? "✓" : "✗"}
                 </span>
-                <p className="font-medium text-slate-800 text-sm">
+                <p className="font-medium text-slate-800 dark:text-slate-100 text-sm">
                   {item.question}
                 </p>
               </div>
@@ -140,10 +140,10 @@ export default function QuizPage({ syllabusId, topic, onBack }: Props) {
                     Your answer: {item.selected_letter}. {item.selected_text}
                   </p>
                 )}
-                <p className="text-emerald-600">
+                <p className="text-emerald-600 dark:text-emerald-400">
                   Correct: {item.correct_letter}. {item.correct_text}
                 </p>
-                <p className="text-slate-500 mt-1 leading-relaxed">
+                <p className="text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
                   {item.explanation}
                 </p>
               </div>
@@ -154,7 +154,7 @@ export default function QuizPage({ syllabusId, topic, onBack }: Props) {
         <div className="flex gap-3 pb-8">
           <button
             onClick={onBack}
-            className="flex-1 py-3 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 text-sm font-medium transition-colors"
+            className="flex-1 py-3 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-700/40 text-sm font-medium transition-colors"
           >
             ← Back to plan
           </button>
@@ -182,18 +182,18 @@ export default function QuizPage({ syllabusId, topic, onBack }: Props) {
         <div>
           <button
             onClick={onBack}
-            className="text-slate-400 hover:text-slate-600 text-sm mb-1"
+            className="text-slate-400 hover:text-slate-600 dark:text-slate-300 text-sm mb-1"
           >
             ← Back
           </button>
-          <h2 className="text-xl font-semibold text-slate-800">{topic}</h2>
+          <h2 className="text-xl font-semibold text-slate-800 dark:text-slate-100">{topic}</h2>
           <p className="text-slate-400 text-sm">
             {quiz!.questions.length} questions · {answeredCount} answered
           </p>
         </div>
         {/* Progress bar */}
         <div className="w-24">
-          <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+          <div className="h-2 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
             <div
               className="h-full bg-violet-500 rounded-full transition-all"
               style={{
@@ -208,9 +208,9 @@ export default function QuizPage({ syllabusId, topic, onBack }: Props) {
       {quiz!.questions.map((q, qi) => (
         <div
           key={qi}
-          className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm"
+          className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-6 shadow-sm"
         >
-          <p className="font-medium text-slate-800 mb-4">
+          <p className="font-medium text-slate-800 dark:text-slate-100 mb-4">
             <span className="text-violet-500 mr-2">{qi + 1}.</span>
             {q.question}
           </p>
@@ -224,8 +224,8 @@ export default function QuizPage({ syllabusId, topic, onBack }: Props) {
                   onClick={() => selectAnswer(qi, letter)}
                   className={`text-left px-4 py-3 rounded-xl border text-sm transition-all ${
                     selected
-                      ? "border-violet-400 bg-violet-50 text-violet-700 font-medium"
-                      : "border-slate-200 hover:border-violet-200 hover:bg-violet-50/50 text-slate-700"
+                      ? "border-violet-400 bg-violet-50 dark:bg-violet-950/50 text-violet-700 dark:text-violet-300 font-medium"
+                      : "border-slate-200 dark:border-slate-700 hover:border-violet-200 hover:bg-violet-50/50 dark:hover:bg-violet-950/30 text-slate-700 dark:text-slate-200"
                   }`}
                 >
                   <span className="font-semibold mr-2">{letter}.</span>
@@ -239,7 +239,7 @@ export default function QuizPage({ syllabusId, topic, onBack }: Props) {
 
       {/* Error */}
       {error && (
-        <p className="text-red-500 text-sm bg-red-50 px-4 py-2 rounded-lg">
+        <p className="text-red-500 text-sm bg-red-50 dark:bg-red-950/40 px-4 py-2 rounded-lg">
           {error}
         </p>
       )}

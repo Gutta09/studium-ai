@@ -1,6 +1,8 @@
 import axios from "axios";
 
-const API = "http://localhost:8000";
+// Dev: Vite proxies /api to the FastAPI server (vite.config.ts).
+// Prod: set VITE_API_URL to the deployed backend origin (including /api).
+const API = import.meta.env.VITE_API_URL ?? "/api";
 
 export interface Session {
   topic: string;
@@ -54,7 +56,7 @@ export async function uploadSyllabus(file: File, days: number): Promise<UploadRe
   form.append("days", String(days));
 
   const { data } = await axios.post<UploadResult>(
-    `${API}/api/upload-syllabus`,
+    `${API}/upload-syllabus`,
     form,
     { headers: { "Content-Type": "multipart/form-data" } }
   );
@@ -66,7 +68,7 @@ export async function generateQuiz(
   syllabusId: string,
   topic: string
 ): Promise<Quiz> {
-  const { data } = await axios.post<Quiz>(`${API}/api/quiz/generate`, {
+  const { data } = await axios.post<Quiz>(`${API}/quiz/generate`, {
     syllabus_id: syllabusId,
     topic,
   });
@@ -77,7 +79,7 @@ export async function submitQuiz(
   quizId: string,
   answers: string[]
 ): Promise<QuizResult> {
-  const { data } = await axios.post<QuizResult>(`${API}/api/quiz/submit`, {
+  const { data } = await axios.post<QuizResult>(`${API}/quiz/submit`, {
     quiz_id: quizId,
     answers,
   });
@@ -109,13 +111,13 @@ export interface ReplanResult {
 
 export async function getResults(syllabusId: string): Promise<ResultsSummary> {
   const { data } = await axios.get<ResultsSummary>(
-    `${API}/api/results/${syllabusId}`
+    `${API}/results/${syllabusId}`
   );
   return data;
 }
 
 export async function replan(syllabusId: string): Promise<ReplanResult> {
-  const { data } = await axios.post<ReplanResult>(`${API}/api/replan`, {
+  const { data } = await axios.post<ReplanResult>(`${API}/replan`, {
     syllabus_id: syllabusId,
   });
   return data;
@@ -137,7 +139,7 @@ export interface ImportantQuestionsResult {
 
 export async function fetchImportantQuestions(topic: string): Promise<ImportantQuestionsResult> {
   const { data } = await axios.post<ImportantQuestionsResult>(
-    `${API}/api/important-questions`,
+    `${API}/important-questions`,
     { topic }
   );
   return data;
