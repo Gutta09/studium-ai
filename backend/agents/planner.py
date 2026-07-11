@@ -1,85 +1,113 @@
-import os
-import json
+"""
+Planner agent: extracts topics from syllabus text and builds a study plan.
+
+Division of labour (deliberate): the LLM decides *pedagogy* — topic order,
+how many sessions a topic deserves, what to study each session. Plain code
+does the *calendar math* — assigning business-day dates. LLMs are unreliable
+at date arithmetic, so dates are never delegated to the model.
+"""
+
 from datetime import date, timedelta
-from groq import Groq
-from dotenv import load_dotenv
 
-load_dotenv()
+from llm import chat_json, LLMError
 
-client = Groq(api_key=os.getenv("GROQ_API_KEY"))
-MODEL = "llama-3.3-70b-versatile"
+MAX_SYLLABUS_CHARS = 24_000  # ~6k tokens of syllabus text is plenty for topic extraction
 
 
 def extract_topics(syllabus_text: str) -> list[str]:
-    trimmed = syllabus_text[:8000]
+    trimmed = syllabus_text[:MAX_SYLLABUS_CHARS]
 
-    response = client.chat.completions.create(
-        model=MODEL,
-        temperature=0,
-        response_format={"type": "json_object"},
-        messages=[
-            {
-                "role": "system",
-                "content": (
-                    "You are an academic assistant. "
-                    "Extract topics from a syllabus and return them as JSON. "
-                    'Return exactly: {"topics": ["Topic 1", "Topic 2", ...]}'
-                ),
-            },
-            {
-                "role": "user",
-                "content": f"Extract all study topics from this syllabus in order.\n\nSyllabus:\n{trimmed}",
-            },
-        ],
+    data = chat_json(
+        system=(
+            "You are an academic assistant. "
+            "Extract topics from a syllabus and return them as JSON. "
+            'Return exactly: {"topics": ["Topic 1", "Topic 2", ...]}'
+        ),
+        user=f"Extract all study topics from this syllabus in order.\n\nSyllabus:\n{trimmed}",
     )
 
-    data = json.loads(response.choices[0].message.content)
-    return data["topics"]
+    topics = data.get("topics")
+    if not isinstance(topics, list):
+        raise LLMError("Topic extraction returned an unexpected shape")
+
+    # De-duplicate while preserving order; drop empty/non-string entries
+    seen = set()
+    clean = []
+    for t in topics:
+        if isinstance(t, str) and t.strip() and t.strip().lower() not in seen:
+            seen.add(t.strip().lower())
+            clean.append(t.strip())
+    return clean
 
 
-def _business_end_date(start: date, n_days: int) -> date:
-    """Return the date that is n_days business days (Mon–Fri) from start."""
+def business_days_from(start: date, count: int) -> list[date]:
+    """The next `count` business days (Mon-Fri) starting from `start` inclusive."""
+    days = []
     d = start
-    added = 0
-    while added < n_days:
-        d += timedelta(days=1)
+    while len(days) < count:
         if d.weekday() < 5:
-            added += 1
-    return d
+            days.append(d)
+        d += timedelta(days=1)
+    return days
+
+
+def assign_dates(sessions: list[dict], total_days: int, start: date | None = None) -> list[dict]:
+    """
+    Deterministically place sessions on business days.
+
+    If there are fewer sessions than study days, sessions are spread evenly
+    across the window; if more, they are truncated to one per day.
+    """
+    if not sessions:
+        return []
+
+    start = start or (date.today() + timedelta(days=1))
+    window = business_days_from(start, total_days)
+
+    if len(sessions) > len(window):
+        sessions = sessions[: len(window)]
+
+    n = len(sessions)
+    dated = []
+    for i, session in enumerate(sessions):
+        # Even spread: session i sits at fraction i/(n-1) of the window
+        slot = round(i * (len(window) - 1) / (n - 1)) if n > 1 else 0
+        dated.append({
+            "topic": session["topic"],
+            "date": window[slot].isoformat(),
+            "status": "pending",
+            "description": session.get("description", ""),
+        })
+    return dated
 
 
 def generate_study_plan(topics: list[str], total_days: int = 30) -> list[dict]:
-    start = date.today() + timedelta(days=1)
-    end = _business_end_date(start, total_days)
-
-    response = client.chat.completions.create(
-        model=MODEL,
-        temperature=0,
-        response_format={"type": "json_object"},
-        messages=[
-            {
-                "role": "system",
-                "content": (
-                    "You are an academic planner. Create a day-wise study schedule and return it as JSON. "
-                    'Return exactly: {"sessions": [{"topic": "...", "date": "YYYY-MM-DD", "status": "pending", "description": "..."}, ...]}'
-                ),
-            },
-            {
-                "role": "user",
-                "content": (
-                    f"Create a study plan for these {len(topics)} topics:\n"
-                    f"{json.dumps(topics)}\n\n"
-                    f"Constraints:\n"
-                    f"- Start date: {start.isoformat()}\n"
-                    f"- Must finish by: {end.isoformat()} ({total_days} study days)\n"
-                    f"- Skip weekends (Sat/Sun)\n"
-                    f"- Distribute all topics within this window — complex topics get more days\n"
-                    f"- Each session description should say what to study that day\n"
-                    f"- status is always 'pending'"
-                ),
-            },
-        ],
+    data = chat_json(
+        system=(
+            "You are an academic planner. Break topics into ordered study sessions and return JSON. "
+            'Return exactly: {"sessions": [{"topic": "...", "description": "..."}, ...]}'
+        ),
+        user=(
+            f"Plan study sessions for these {len(topics)} topics, in a sensible learning order:\n"
+            f"{topics}\n\n"
+            f"Constraints:\n"
+            f"- The student has {total_days} study days in total\n"
+            f"- Produce at most {total_days} sessions\n"
+            f"- Complex topics may get two sessions; simple ones share or get one\n"
+            f"- Each description says concretely what to study in that session\n"
+            f"- Do NOT include dates — scheduling is handled separately"
+        ),
     )
 
-    data = json.loads(response.choices[0].message.content)
-    return data["sessions"]
+    raw_sessions = data.get("sessions")
+    if not isinstance(raw_sessions, list):
+        raise LLMError("Planner returned an unexpected shape")
+
+    sessions = [
+        s for s in raw_sessions
+        if isinstance(s, dict) and isinstance(s.get("topic"), str) and s["topic"].strip()
+    ]
+    if not sessions:
+        raise LLMError("Planner returned no usable sessions")
+
+    return assign_dates(sessions, total_days)

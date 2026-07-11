@@ -1,21 +1,25 @@
 """
-results.py — Phase 3 + Phase 4 endpoints.
+results.py — progress aggregation and adaptive re-planning.
 
 GET  /api/results/{syllabus_id}
   Reads all quiz results for this syllabus, aggregates per-topic scores,
   and flags weak topics (average < 70%).
 
 POST /api/replan
-  Reads weak topics, calls Claude to generate extra review sessions,
-  appends them to the existing plan in MongoDB, returns the full updated plan.
+  Reads weak topics, asks the LLM for extra review sessions, appends them
+  to the existing plan in MongoDB, returns the full updated plan.
+  Topics that already received review sessions are not re-planned again.
 """
 
 from datetime import date, timedelta
+from collections import defaultdict
+
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-from collections import defaultdict
+
 from agents.replanner import generate_replan
-from db import results as results_col, plans, syllabi
+from llm import LLMError
+from db import results as results_col, plans
 
 router = APIRouter()
 
@@ -78,7 +82,7 @@ class ReplanRequest(BaseModel):
 @router.post("/replan")
 def replan(body: ReplanRequest):
     """
-    Detect weak topics → ask Claude for extra sessions → update the plan.
+    Detect weak topics → ask the LLM for extra sessions → update the plan.
     Returns the full updated session list (original + new review sessions).
     """
     # 1. Find weak topics for this syllabus
@@ -91,23 +95,35 @@ def replan(body: ReplanRequest):
             detail="No weak topics detected — no re-planning needed!",
         )
 
-    # 2. Find the current plan to get the last session date
+    # 2. Find the current plan
     plan_doc = plans.find_one({"syllabus_id": body.syllabus_id})
     if not plan_doc:
         raise HTTPException(status_code=404, detail="Plan not found for this syllabus.")
+
+    # Idempotency: don't add more review sessions for topics that already
+    # got them in a previous replan
+    already_reviewed = set(plan_doc.get("reviewed_topics", []))
+    weak_topics = [t for t in weak_topics if t["topic"] not in already_reviewed]
+    if not weak_topics:
+        raise HTTPException(
+            status_code=400,
+            detail="All weak topics already have review sessions. Take the reviews, then re-test!",
+        )
 
     existing_sessions = plan_doc.get("sessions", [])
 
     # Start new sessions the day after the current plan ends (or tomorrow)
     if existing_sessions:
-        last_date_str = max(s["date"] for s in existing_sessions)
-        last_date = date.fromisoformat(last_date_str)
+        last_date = date.fromisoformat(max(s["date"] for s in existing_sessions))
         start_date = (last_date + timedelta(days=1)).isoformat()
     else:
         start_date = (date.today() + timedelta(days=1)).isoformat()
 
-    # 3. Ask Claude to generate focused review sessions
-    new_sessions = generate_replan(weak_topics, start_date)
+    # 3. Ask the LLM to generate focused review sessions
+    try:
+        new_sessions = generate_replan(weak_topics, start_date)
+    except LLMError as e:
+        raise HTTPException(status_code=502, detail=str(e))
 
     if not new_sessions:
         raise HTTPException(status_code=422, detail="Re-planner returned no sessions.")
@@ -119,8 +135,9 @@ def replan(body: ReplanRequest):
         {
             "$set": {
                 "sessions": updated_sessions,
-                "version": plan_doc.get("version", 1) + 1,
-            }
+                "reviewed_topics": sorted(already_reviewed | {w["topic"] for w in weak_topics}),
+            },
+            "$inc": {"version": 1},
         },
     )
 
