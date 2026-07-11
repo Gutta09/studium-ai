@@ -1,7 +1,8 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
 from agents.examiner import generate_important_questions
+from auth import current_user
 from llm import LLMError
 
 router = APIRouter()
@@ -12,7 +13,7 @@ class QuestionsRequest(BaseModel):
 
 
 @router.post("/important-questions")
-def important_questions(body: QuestionsRequest):
+def important_questions(body: QuestionsRequest, user: dict = Depends(current_user)):
     if not body.topic.strip():
         raise HTTPException(status_code=400, detail="Topic cannot be empty.")
 

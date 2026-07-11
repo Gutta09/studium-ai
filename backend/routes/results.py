@@ -14,10 +14,12 @@ POST /api/replan
 from datetime import date, timedelta
 from collections import defaultdict
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
 from agents.replanner import generate_replan
+from auth import current_user
+from routes.syllabus import owned_syllabus_or_404
 from llm import LLMError
 from db import results as results_col, plans
 
@@ -61,8 +63,9 @@ def _aggregate_results(syllabus_id: str) -> list[dict]:
 # ── Endpoints ─────────────────────────────────────────────────────────────────
 
 @router.get("/results/{syllabus_id}")
-def get_results(syllabus_id: str):
+def get_results(syllabus_id: str, user: dict = Depends(current_user)):
     """Return aggregated per-topic quiz results and a list of weak topics."""
+    owned_syllabus_or_404(syllabus_id, user["user_id"])
     topic_results = _aggregate_results(syllabus_id)
 
     weak_topics = [t for t in topic_results if t["is_weak"]]
@@ -80,11 +83,13 @@ class ReplanRequest(BaseModel):
 
 
 @router.post("/replan")
-def replan(body: ReplanRequest):
+def replan(body: ReplanRequest, user: dict = Depends(current_user)):
     """
     Detect weak topics → ask the LLM for extra sessions → update the plan.
     Returns the full updated session list (original + new review sessions).
     """
+    owned_syllabus_or_404(body.syllabus_id, user["user_id"])
+
     # 1. Find weak topics for this syllabus
     topic_results = _aggregate_results(body.syllabus_id)
     weak_topics = [t for t in topic_results if t["is_weak"]]

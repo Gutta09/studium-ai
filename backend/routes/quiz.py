@@ -12,14 +12,16 @@ POST /api/quiz/submit
 
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from bson import ObjectId
 from bson.errors import InvalidId
 
 from agents.quizzer import generate_quiz, VALID_LETTERS
+from auth import current_user
+from routes.syllabus import owned_syllabus_or_404
 from llm import LLMError
-from db import quizzes, results, syllabi
+from db import quizzes, results
 
 router = APIRouter()
 
@@ -75,16 +77,11 @@ def score_quiz(stored_questions: list[dict], answers: list[str]) -> dict:
 # ── Endpoints ─────────────────────────────────────────────────────────────────
 
 @router.post("/quiz/generate")
-def quiz_generate(body: GenerateRequest):
+def quiz_generate(body: GenerateRequest, user: dict = Depends(current_user)):
     """Generate a fresh quiz for a topic and return it without the answers."""
 
-    # The syllabus_id is client-supplied — verify it refers to a real syllabus
-    try:
-        syllabus = syllabi.find_one({"_id": ObjectId(body.syllabus_id)})
-    except InvalidId:
-        raise HTTPException(status_code=400, detail="Invalid syllabus ID.")
-    if not syllabus:
-        raise HTTPException(status_code=404, detail="Syllabus not found.")
+    # The syllabus_id is client-supplied — verify it exists AND belongs to this user
+    owned_syllabus_or_404(body.syllabus_id, user["user_id"])
 
     try:
         questions = generate_quiz(body.topic, body.num_questions)
@@ -96,6 +93,7 @@ def quiz_generate(body: GenerateRequest):
 
     # Store the full quiz (with correct_answer) in MongoDB
     quiz_doc = {
+        "user_id": user["user_id"],
         "syllabus_id": body.syllabus_id,
         "topic": body.topic,
         "questions": questions,  # stored with correct_answer
@@ -119,7 +117,7 @@ def quiz_generate(body: GenerateRequest):
 
 
 @router.post("/quiz/submit")
-def quiz_submit(body: SubmitRequest):
+def quiz_submit(body: SubmitRequest, user: dict = Depends(current_user)):
     """Score the student's answers and return a breakdown with explanations."""
 
     try:
@@ -127,7 +125,7 @@ def quiz_submit(body: SubmitRequest):
     except InvalidId:
         raise HTTPException(status_code=400, detail="Invalid quiz ID.")
 
-    if not quiz_doc:
+    if not quiz_doc or quiz_doc.get("user_id") != user["user_id"]:
         raise HTTPException(status_code=404, detail="Quiz not found.")
 
     stored_questions = quiz_doc["questions"]
@@ -150,6 +148,7 @@ def quiz_submit(body: SubmitRequest):
 
     # Store the result for weak-topic detection
     results.insert_one({
+        "user_id": user["user_id"],
         "quiz_id": body.quiz_id,
         "syllabus_id": quiz_doc["syllabus_id"],
         "topic": quiz_doc["topic"],

@@ -4,6 +4,7 @@ import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from auth import router as auth_router
 from routes.syllabus import router as syllabus_router
 from routes.quiz import router as quiz_router
 from routes.results import router as results_router
@@ -32,6 +33,7 @@ def health():
     return {"status": "ok", "service": "STUDIUM AI"}
 
 
+app.include_router(auth_router, prefix="/api")
 app.include_router(syllabus_router, prefix="/api")
 app.include_router(quiz_router, prefix="/api")
 app.include_router(results_router, prefix="/api")
