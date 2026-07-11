@@ -1,11 +1,7 @@
 import { useEffect, useState } from "react";
+import { Link, useParams } from "react-router-dom";
 import { fetchImportantQuestions } from "../api/studium";
 import type { ImportantQuestionsResult } from "../api/studium";
-
-interface Props {
-  topic: string;
-  onBack: () => void;
-}
 
 const SECTIONS: { key: keyof Omit<ImportantQuestionsResult, "topic">; label: string; marks: string; color: string }[] = [
   { key: "2_mark",  label: "Short Answer",  marks: "2 marks",  color: "emerald" },
@@ -25,7 +21,10 @@ const BADGE_MAP: Record<string, string> = {
   violet:  "bg-violet-100 dark:bg-violet-900/50 text-violet-700 dark:text-violet-300",
 };
 
-export default function ImportantQuestions({ topic, onBack }: Props) {
+export default function ImportantQuestions() {
+  const params = useParams<{ syllabusId: string; topic: string }>();
+  const syllabusId = params.syllabusId!;
+  const topic = decodeURIComponent(params.topic ?? "");
   const [data, setData] = useState<ImportantQuestionsResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -56,7 +55,7 @@ export default function ImportantQuestions({ topic, onBack }: Props) {
     return (
       <div className="max-w-3xl mx-auto text-center py-20">
         <p className="text-red-500 mb-4">{error}</p>
-        <button onClick={onBack} className="text-indigo-600 dark:text-indigo-400 hover:underline text-sm">← Back to study plan</button>
+        <Link to={`/plan/${syllabusId}`} className="text-indigo-600 dark:text-indigo-400 hover:underline text-sm">← Back to study plan</Link>
       </div>
     );
   }
@@ -69,12 +68,12 @@ export default function ImportantQuestions({ topic, onBack }: Props) {
       {/* Header */}
       <div className="flex items-start justify-between">
         <div>
-          <button onClick={onBack} className="text-slate-400 hover:text-indigo-600 dark:text-indigo-400 text-sm mb-2 flex items-center gap-1">
+          <Link to={`/plan/${syllabusId}`} className="text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 text-sm mb-2 flex items-center gap-1">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
             Back to Study Plan
-          </button>
+          </Link>
           <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Important Questions</h1>
           <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">
             <span className="font-medium text-slate-700 dark:text-slate-200">{topic}</span>

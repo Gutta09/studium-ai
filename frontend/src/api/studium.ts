@@ -4,6 +4,46 @@ import axios from "axios";
 // Prod: set VITE_API_URL to the deployed backend origin (including /api).
 const API = import.meta.env.VITE_API_URL ?? "/api";
 
+export const http = axios.create({ baseURL: API });
+
+let _token: string | null = null;
+
+export function setAuthToken(token: string | null) {
+  _token = token;
+}
+
+http.interceptors.request.use((config) => {
+  if (_token) config.headers.Authorization = `Bearer ${_token}`;
+  return config;
+});
+
+// An expired/invalid token anywhere in the app sends the user back to sign-in
+http.interceptors.response.use(undefined, (error) => {
+  if (error?.response?.status === 401 && !error.config?.url?.startsWith("/auth")) {
+    localStorage.removeItem("studium_token");
+    localStorage.removeItem("studium_email");
+    window.location.assign("/auth");
+  }
+  return Promise.reject(error);
+});
+
+// ── Auth ──────────────────────────────────────────────────────────────────────
+
+export interface AuthResponse {
+  token: string;
+  email: string;
+}
+
+export async function register(email: string, password: string): Promise<AuthResponse> {
+  const { data } = await http.post<AuthResponse>("/auth/register", { email, password });
+  return data;
+}
+
+export async function login(email: string, password: string): Promise<AuthResponse> {
+  const { data } = await http.post<AuthResponse>("/auth/login", { email, password });
+  return data;
+}
+
 export interface Session {
   topic: string;
   date: string;
@@ -55,8 +95,8 @@ export async function uploadSyllabus(file: File, days: number): Promise<UploadRe
   form.append("file", file);
   form.append("days", String(days));
 
-  const { data } = await axios.post<UploadResult>(
-    `${API}/upload-syllabus`,
+  const { data } = await http.post<UploadResult>(
+    `/upload-syllabus`,
     form,
     { headers: { "Content-Type": "multipart/form-data" } }
   );
@@ -68,7 +108,7 @@ export async function generateQuiz(
   syllabusId: string,
   topic: string
 ): Promise<Quiz> {
-  const { data } = await axios.post<Quiz>(`${API}/quiz/generate`, {
+  const { data } = await http.post<Quiz>(`/quiz/generate`, {
     syllabus_id: syllabusId,
     topic,
   });
@@ -79,7 +119,7 @@ export async function submitQuiz(
   quizId: string,
   answers: string[]
 ): Promise<QuizResult> {
-  const { data } = await axios.post<QuizResult>(`${API}/quiz/submit`, {
+  const { data } = await http.post<QuizResult>(`/quiz/submit`, {
     quiz_id: quizId,
     answers,
   });
@@ -110,14 +150,12 @@ export interface ReplanResult {
 }
 
 export async function getResults(syllabusId: string): Promise<ResultsSummary> {
-  const { data } = await axios.get<ResultsSummary>(
-    `${API}/results/${syllabusId}`
-  );
+  const { data } = await http.get<ResultsSummary>(`/results/${syllabusId}`);
   return data;
 }
 
 export async function replan(syllabusId: string): Promise<ReplanResult> {
-  const { data } = await axios.post<ReplanResult>(`${API}/replan`, {
+  const { data } = await http.post<ReplanResult>(`/replan`, {
     syllabus_id: syllabusId,
   });
   return data;
@@ -138,9 +176,42 @@ export interface ImportantQuestionsResult {
 }
 
 export async function fetchImportantQuestions(topic: string): Promise<ImportantQuestionsResult> {
-  const { data } = await axios.post<ImportantQuestionsResult>(
-    `${API}/important-questions`,
+  const { data } = await http.post<ImportantQuestionsResult>(
+    `/important-questions`,
     { topic }
   );
   return data;
+}
+
+// ── Plans & dashboard ─────────────────────────────────────────────────────────
+
+export interface SyllabusSummary {
+  syllabus_id: string;
+  filename: string;
+  topics: number;
+  sessions: number;
+  done_sessions: number;
+  created_at: string | null;
+}
+
+export async function listSyllabi(): Promise<SyllabusSummary[]> {
+  const { data } = await http.get<SyllabusSummary[]>("/syllabi");
+  return data;
+}
+
+export async function fetchPlan(syllabusId: string): Promise<UploadResult> {
+  const { data } = await http.get<UploadResult>(`/plan/${syllabusId}`);
+  return data;
+}
+
+export async function updateSessionStatus(
+  syllabusId: string,
+  index: number,
+  status: "pending" | "done"
+): Promise<Session[]> {
+  const { data } = await http.patch<{ sessions: Session[] }>(
+    `/plan/${syllabusId}/sessions/${index}`,
+    { status }
+  );
+  return data.sessions;
 }

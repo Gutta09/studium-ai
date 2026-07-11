@@ -1,16 +1,14 @@
 import { useEffect, useState } from "react";
+import { Link, useParams } from "react-router-dom";
 import { generateQuiz, submitQuiz } from "../api/studium";
 import type { Quiz, QuizResult } from "../api/studium";
 
-interface Props {
-  syllabusId: string;
-  topic: string;
-  onBack: () => void;
-}
-
 const LETTERS = ["A", "B", "C", "D"] as const;
 
-export default function QuizPage({ syllabusId, topic, onBack }: Props) {
+export default function QuizPage() {
+  const params = useParams<{ syllabusId: string; topic: string }>();
+  const syllabusId = params.syllabusId!;
+  const topic = decodeURIComponent(params.topic ?? "");
   const [quiz, setQuiz] = useState<Quiz | null>(null);
   const [answers, setAnswers] = useState<string[]>([]);
   const [result, setResult] = useState<QuizResult | null>(null);
@@ -79,9 +77,9 @@ export default function QuizPage({ syllabusId, topic, onBack }: Props) {
     return (
       <div className="max-w-2xl mx-auto text-center py-16">
         <p className="text-red-500 mb-4">{error}</p>
-        <button onClick={onBack} className="text-violet-600 hover:underline text-sm">
+        <Link to={`/plan/${syllabusId}`} className="text-violet-600 hover:underline text-sm">
           ← Back to study plan
-        </button>
+        </Link>
       </div>
     );
   }
@@ -152,12 +150,12 @@ export default function QuizPage({ syllabusId, topic, onBack }: Props) {
         </div>
 
         <div className="flex gap-3 pb-8">
-          <button
-            onClick={onBack}
-            className="flex-1 py-3 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-700/40 text-sm font-medium transition-colors"
+          <Link
+            to={`/plan/${syllabusId}`}
+            className="flex-1 py-3 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/40 text-sm font-medium transition-colors text-center"
           >
             ← Back to plan
-          </button>
+          </Link>
           <button
             onClick={() => {
               setResult(null);
@@ -180,12 +178,12 @@ export default function QuizPage({ syllabusId, topic, onBack }: Props) {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <button
-            onClick={onBack}
-            className="text-slate-400 hover:text-slate-600 dark:text-slate-300 text-sm mb-1"
+          <Link
+            to={`/plan/${syllabusId}`}
+            className="inline-block text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 text-sm mb-1"
           >
             ← Back
-          </button>
+          </Link>
           <h2 className="text-xl font-semibold text-slate-800 dark:text-slate-100">{topic}</h2>
           <p className="text-slate-400 text-sm">
             {quiz!.questions.length} questions · {answeredCount} answered
