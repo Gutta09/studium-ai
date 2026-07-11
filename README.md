@@ -19,6 +19,7 @@ syllabus PDF ─▶ extract topics ─▶ plan sessions ─▶ student takes qui
                                  add review sessions ◀─ detect weak topics (<70%)
 ```
 
+0. **Accounts**: email + password auth (scrypt-hashed, JWT bearer tokens) — every syllabus, plan, quiz and result is scoped to its owner, and foreign IDs 404
 1. **Planner** extracts topics from the uploaded PDF and breaks them into ordered study sessions
 2. **Quizzer** generates per-topic MCQs — answers are stored server-side and *never sent to the client* until submission (no cheating via DevTools)
 3. **Results** aggregates scores per topic and flags weak ones (average < 70%)
@@ -38,11 +39,11 @@ Every LLM response is schema-validated before use: malformed quiz questions are 
 
 ## Tech stack
 
-- **Frontend** — React 19 + Vite + TypeScript + Tailwind CSS v4, full dark mode
+- **Frontend** — React 19 + Vite + TypeScript + Tailwind CSS v4 + React Router, full dark mode; plans are URL-addressable (`/plan/:id`) so refresh and deep links work
 - **Backend** — FastAPI, agents in `backend/agents/` sharing one LLM gateway (`backend/llm.py`)
 - **LLM** — Groq (`llama-3.3-70b-versatile` by default, override with `GROQ_MODEL`) — free tier works
 - **Database** — MongoDB (syllabi, plans, quizzes, results)
-- **Tests** — 23 pytest cases: date assignment invariants, LLM-output validation, scoring, API contracts (LLM mocked, MongoDB via mongomock)
+- **Tests** — 33 pytest cases: auth + per-user data isolation, date assignment invariants, LLM-output validation, scoring, API contracts (LLM mocked, MongoDB via mongomock)
 
 ## Run locally
 
@@ -53,7 +54,7 @@ Prereqs: Python 3.11+, Node 20+, MongoDB running locally (or an Atlas URI).
 cd backend
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-cp ../.env.example .env         # add your GROQ_API_KEY (free at console.groq.com)
+cp ../.env.example .env         # add GROQ_API_KEY (free at console.groq.com) + JWT_SECRET
 uvicorn main:app --reload       # :8000
 
 # Frontend (separate terminal)
@@ -71,6 +72,11 @@ cd backend && pip install -r requirements-dev.txt && python -m pytest tests -q
 
 | Endpoint | What it does |
 |---|---|
+| `POST /api/auth/register` · `/login` | Email+password accounts → JWT (7-day) |
+| `GET /api/auth/me` | Resolve the current token |
+| `GET /api/syllabi` | Your syllabi with per-plan progress (home dashboard) |
+| `GET /api/plan/{syllabus_id}` | Full plan — restores state on refresh/deep link |
+| `PATCH /api/plan/{id}/sessions/{i}` | Mark a session done / pending |
 | `POST /api/upload-syllabus` | PDF (≤10 MB) + study days → topics + dated study plan |
 | `POST /api/quiz/generate` | 5 validated MCQs for a topic (answers withheld) |
 | `POST /api/quiz/submit` | Server-side scoring with per-question breakdown |
@@ -81,10 +87,10 @@ cd backend && pip install -r requirements-dev.txt && python -m pytest tests -q
 
 ## Honest limitations / roadmap
 
-- **No accounts** — anyone with a syllabus_id can read its plan; auth is the first thing needed for multi-user deployment
-- **No URL routing** — view state lives in React state, so refreshing loses your place (react-router migration planned)
-- Session `status` (pending/done) exists in the data model but there's no UI to mark sessions done yet
+- JWTs live in localStorage (simple, but XSS-exposed) — httpOnly cookie sessions are the hardening step
+- No rate limiting on LLM-backed endpoints — needed before any public deployment
 - Topic matching between quizzes and plan sessions is by exact string — a rename by the LLM would orphan results
+- No email verification / password reset
 
 ## License
 
