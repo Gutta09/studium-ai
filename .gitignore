@@ -8,3 +8,8 @@ dist/
 .DS_Store
 REPORT.md
 *.pdf
+
+# Local tooling
+.venv-ci/
+.pytest_cache/
+docs-local/
